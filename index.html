@@ -35,7 +35,7 @@
   </div>
   <div class="progress"><i id="bar"></i></div>
   <section id="home" class="card">
-    <div class="small">EIKEN Grade 3 Vocabulary Core v1 ・ Writing v1.1</div>
+    <div class="small">EIKEN Grade 3 Vocabulary Core v1 ・ Writing v1.2</div>
     <div class="word" style="font-size:30px">今日も10問だけ。<br><span style="font-size:14px;color:#94a3b8"><span id="vocabCount"></span>項目から最適化</span></div><div class="meaning">重要語 → 苦手語 → 復習語を優先。おすすめでは10問中3問を必ずスペル出題。</div>
     <div class="menu">
       <button class="primary" onclick="startSession('mix')">🎯 おすすめ<br><span class="small">10問中3問はスペル</span></button>
@@ -49,7 +49,6 @@
   <section id="quiz" class="card hidden">
     <div class="small"><span id="qnum">1</span> / 10　<span class="badge" id="modeBadge">4択</span>　<span class="badge" id="catBadge">Core A</span>　<span class="badge" id="stateBadge">新規</span></div>
     <div class="word" id="word"></div><div class="small" id="hint"></div><div class="row"><button id="speakBtn" onclick="speakWord()">🔊 発音</button></div>
-    <div id="spellArea" class="spellbox hidden"><input id="spellInput" type="text" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="英語を入力"><div id="spellMsg" class="spellmsg"></div><div class="row"><button class="primary" onclick="checkSpelling()">答える</button></div></div>
     <div id="choices" class="choices"></div>
     <div id="reveal" class="hidden"><div class="meaning" id="meaning"></div><div class="example" id="example"></div><div class="jp" id="exampleJp"></div>
       <div class="row"><button class="bad" onclick="rate(0)">まだ無理</button><button class="warn" onclick="rate(1)">あやしい</button><button class="good" onclick="rate(2)">覚えた</button></div>
@@ -137,59 +136,88 @@ function showQuestion(){
     const n=idx+1;
     currentMode=[3,6,9].includes(n)?"spell":([4,10].includes(n)?"flash":"choice");
   }else currentMode=mode;
+
   document.getElementById("qnum").textContent=idx+1;
   document.getElementById("bar").style.width=(idx*10)+"%";
   document.getElementById("meaning").textContent=w.j;
   document.getElementById("example").textContent=w.ex;
   document.getElementById("exampleJp").textContent=w.jp;
   document.getElementById("reveal").classList.add("hidden");
-  const choices=document.getElementById("choices"),spellArea=document.getElementById("spellArea"),spellInput=document.getElementById("spellInput"),spellMsg=document.getElementById("spellMsg");
-  choices.innerHTML="";choices.classList.remove("hidden");spellArea.classList.add("hidden");spellMsg.textContent="";spellInput.value="";spellInput.dataset.retry="0";
+
+  const choices=document.getElementById("choices");
+  const oldSpell=document.getElementById("spellArea");
+  if(oldSpell)oldSpell.classList.add("hidden");
+  choices.innerHTML="";
+  choices.classList.remove("hidden");
+
   const labels={CoreA:"Core A",CoreB:"Core B",CoreC:"Core C",Phrase:"熟語",Conversation:"会話",Review:"復習"};
   document.getElementById("catBadge").textContent=labels[w.category]||w.category;
   document.getElementById("stateBadge").textContent=p.graduated?"卒業":p.lapses>0?"重点":p.fastCandidate?"卒業候補":p.seen>0?"復習":"新規";
+
+  const speakBtn=document.getElementById("speakBtn");
+
   if(currentMode==="spell"){
-    document.getElementById("modeBadge").textContent="スペル";
+    document.getElementById("modeBadge").textContent="✍️ スペル入力";
     document.getElementById("word").textContent=w.j;
-    document.getElementById("hint").textContent="英語で入力しよう";
-    choices.classList.add("hidden");spellArea.classList.remove("hidden");
-    setTimeout(()=>spellInput.focus(),80);
+    document.getElementById("hint").textContent="日本語を英語で書いてください";
+    if(speakBtn)speakBtn.style.display="none";
+    choices.innerHTML=`
+      <div style="grid-column:1/-1;width:100%;margin-top:4px">
+        <div style="font-size:13px;color:#94a3b8;text-align:center;margin-bottom:8px">4択ではありません。キーボードで入力します。</div>
+        <input id="spellInput" type="text" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false"
+          placeholder="ここに英語を入力"
+          style="width:100%;font-size:22px;padding:16px;border-radius:14px;border:1px solid #334155;background:#0b1220;color:#f8fafc;text-align:center;outline:none">
+        <div id="spellMsg" style="text-align:center;margin-top:10px;font-weight:800;min-height:24px"></div>
+        <button class="primary" onclick="checkSpelling()" style="width:100%;margin-top:8px">答える</button>
+      </div>`;
+    setTimeout(()=>{const inp=document.getElementById("spellInput");if(inp)inp.focus()},100);
+    return;
+  }
+
+  if(speakBtn)speakBtn.style.display="";
+  document.getElementById("word").textContent=w.e;
+  document.getElementById("modeBadge").textContent=currentMode==="choice"?"4択":"自己評価";
+
+  if(currentMode==="choice"){
+    document.getElementById("hint").textContent="意味を選ぼう";
+    const same=WORDS.filter(x=>x.e!==w.e&&x.pos===w.pos).sort(()=>Math.random()-.5);
+    const rest=WORDS.filter(x=>x.e!==w.e&&x.pos!==w.pos).sort(()=>Math.random()-.5);
+    let opts=[w,...same,...rest].filter((x,i,a)=>a.findIndex(y=>y.e===x.e)===i).slice(0,4).sort(()=>Math.random()-.5);
+    opts.forEach(c=>{const b=document.createElement("button");b.textContent=c.j;b.onclick=()=>choose(c.e===w.e,b);choices.appendChild(b)})
   }else{
-    document.getElementById("word").textContent=w.e;
-    document.getElementById("modeBadge").textContent=currentMode==="choice"?"4択":"自己評価";
-    if(currentMode==="choice"){
-      document.getElementById("hint").textContent="意味を選ぼう";
-      const same=WORDS.filter(x=>x.e!==w.e&&x.pos===w.pos).sort(()=>Math.random()-.5);
-      const rest=WORDS.filter(x=>x.e!==w.e&&x.pos!==w.pos).sort(()=>Math.random()-.5);
-      let opts=[w,...same,...rest].filter((x,i,a)=>a.findIndex(y=>y.e===x.e)===i).slice(0,4).sort(()=>Math.random()-.5);
-      opts.forEach(c=>{const b=document.createElement("button");b.textContent=c.j;b.onclick=()=>choose(c.e===w.e,b);choices.appendChild(b)})
-    }else{
-      document.getElementById("hint").textContent="意味が分かったら答えを見る";
-      const b=document.createElement("button");b.className="primary";b.textContent="答えを見る";
-      b.onclick=()=>{choices.classList.add("hidden");document.getElementById("reveal").classList.remove("hidden")};choices.appendChild(b)
-    }
+    document.getElementById("hint").textContent="意味が分かったら答えを見る";
+    const b=document.createElement("button");b.className="primary";b.textContent="答えを見る";
+    b.onclick=()=>{choices.classList.add("hidden");document.getElementById("reveal").classList.remove("hidden")};choices.appendChild(b)
   }
 }
 function normSpell(v){return v.toLowerCase().trim().replace(/[’‘]/g,"'").replace(/[.!?]+$/,"").replace(/\s+/g," ")}
 function editDistance(a,b){const m=a.length,n=b.length,d=Array.from({length:m+1},()=>Array(n+1).fill(0));for(let i=0;i<=m;i++)d[i][0]=i;for(let j=0;j<=n;j++)d[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[m][n]}
 function checkSpelling(){
   if(answered)return;
-  const w=session[idx],inp=document.getElementById("spellInput"),msg=document.getElementById("spellMsg");
+  const w=session[idx];
+  const inp=document.getElementById("spellInput"),msg=document.getElementById("spellMsg");
+  if(!inp||!msg)return;
   const got=normSpell(inp.value),target=normSpell(w.e);
-  if(!got){msg.textContent="入力してから答えよう";return}
+  if(!got){msg.textContent="入力してから答えよう";msg.style.color="#f59e0b";inp.focus();return}
   if(got===target){
     answered=true;score++;msg.textContent="✅ 正解";msg.style.color="#22c55e";recordResult(w,"writing");
-    setTimeout(nextQuestion,550);return
+    setTimeout(nextQuestion,650);return
   }
   const dist=editDistance(got,target),limit=target.length>=10?2:1;
-  if(inp.dataset.retry==="0"&&dist<=limit){
+  const retry=inp.dataset.retry||"0";
+  if(retry==="0"&&dist<=limit){
     inp.dataset.retry="1";msg.textContent="惜しい！もう一度";msg.style.color="#f59e0b";inp.select();return
   }
-  answered=true;msg.textContent="❌ "+w.e;msg.style.color="#ef4444";recordResult(w,"writingWrong");requeueFailed(w);
-  document.getElementById("meaning").textContent=w.j;document.getElementById("example").textContent=w.ex;document.getElementById("exampleJp").textContent=w.jp;
-  setTimeout(()=>{document.getElementById("spellArea").classList.add("hidden");document.getElementById("reveal").classList.remove("hidden");document.getElementById("word").textContent=w.e},450)
+  answered=true;msg.textContent="❌ 正解: "+w.e;msg.style.color="#ef4444";recordResult(w,"writingWrong");requeueFailed(w);
+  setTimeout(()=>{
+    document.getElementById("choices").classList.add("hidden");
+    document.getElementById("word").textContent=w.e;
+    document.getElementById("meaning").textContent=w.j;
+    document.getElementById("reveal").classList.remove("hidden");
+    const sb=document.getElementById("speakBtn");if(sb)sb.style.display="";
+  },500)
 }
-document.addEventListener("keydown",e=>{if(e.key==="Enter"&&currentMode==="spell"&&!document.getElementById("spellArea").classList.contains("hidden"))checkSpelling()});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&currentMode==="spell"&&document.getElementById("spellInput")){e.preventDefault();checkSpelling()}});
 
 function choose(ok,b){if(answered)return;answered=true;const w=session[idx];if(ok){b.classList.add("good");score++;recordResult(w,"correct");setTimeout(nextQuestion,350)}else{b.classList.add("bad");recordResult(w,"wrong");requeueFailed(w);document.getElementById("choices").classList.add("hidden");document.getElementById("reveal").classList.remove("hidden")}}
 function rate(r){const w=session[idx];if(r===2){score++;recordResult(w,"known")}else if(r===1){recordResult(w,"unsure")}else{recordResult(w,"wrong");requeueFailed(w)}nextQuestion()}
