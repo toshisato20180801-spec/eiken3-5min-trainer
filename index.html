@@ -35,10 +35,10 @@
   </div>
   <div class="progress"><i id="bar"></i></div>
   <section id="home" class="card">
-    <div class="small">EIKEN Grade 3 Vocabulary Core v1 ・ 合格点への寄与が高い順</div>
-    <div class="word" style="font-size:30px">今日も10問だけ。<br><span style="font-size:14px;color:#94a3b8"><span id="vocabCount"></span>項目から最適化</span></div><div class="meaning">重要語 → 苦手語 → 復習語を優先。卒業にはスペル正解が必要。</div>
+    <div class="small">EIKEN Grade 3 Vocabulary Core v1 ・ Writing v1.1</div>
+    <div class="word" style="font-size:30px">今日も10問だけ。<br><span style="font-size:14px;color:#94a3b8"><span id="vocabCount"></span>項目から最適化</span></div><div class="meaning">重要語 → 苦手語 → 復習語を優先。おすすめでは10問中3問を必ずスペル出題。</div>
     <div class="menu">
-      <button class="primary" onclick="startSession('mix')">🎯 おすすめ<br><span class="small">4択＋スペル＋確認</span></button>
+      <button class="primary" onclick="startSession('mix')">🎯 おすすめ<br><span class="small">10問中3問はスペル</span></button>
       <button onclick="startSession('choice')">⚡ 4択だけ<br><span class="small">テンポ重視</span></button>
       <button onclick="startSession('flash')">🧠 覚えた？<br><span class="small">自己評価</span></button>
       <button onclick="startSession('spell')">✍️ スペル<br><span class="small">日本語 → 英語</span></button>
@@ -134,8 +134,8 @@ function showQuestion(){
   answered=false;
   const w=session[idx],p=pFor(w);
   if(mode==="mix"){
-    const needsWriting=p.fastCandidate||p.level>=3||p.graduated;
-    currentMode=needsWriting&&idx%2===0?"spell":(idx%4===3?"flash":"choice");
+    const n=idx+1;
+    currentMode=[3,6,9].includes(n)?"spell":([4,10].includes(n)?"flash":"choice");
   }else currentMode=mode;
   document.getElementById("qnum").textContent=idx+1;
   document.getElementById("bar").style.width=(idx*10)+"%";
