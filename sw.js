@@ -1,17 +1,3 @@
-const CACHE='eiken3-v121';
-const ASSETS=['./vocab-v1.js?v=121','./manifest.webmanifest','./icon.svg'];
-self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
-self.addEventListener('activate',e=>{e.waitUntil(Promise.all([
-  caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))),
-  self.clients.claim()
-]))});
-self.addEventListener('fetch',e=>{
-  const req=e.request;
-  if(req.mode==='navigate'){
-    e.respondWith(fetch(req,{cache:'no-store'}).catch(()=>caches.match('./index.html')));
-    return;
-  }
-  e.respondWith(fetch(req).then(res=>{
-    const copy=res.clone();caches.open(CACHE).then(c=>c.put(req,copy));return res;
-  }).catch(()=>caches.match(req)));
-});
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',e=>e.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.map(k=>caches.delete(k)));await self.registration.unregister();const cs=await self.clients.matchAll();for(const c of cs)c.navigate(c.url)})()));
+self.addEventListener('fetch',()=>{});
