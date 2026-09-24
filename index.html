@@ -31,7 +31,7 @@
   <div class="top"><h1>英検3級 5分トレーナー</h1><div class="pill" id="streakPill">🔥 0日</div></div>
   <div class="stats">
     <div class="stat"><b id="xp">0</b><span>XP</span></div><div class="stat"><b id="today">0</b><span>今日の正解</span></div>
-    <div class="stat"><b id="mastered">0</b><span>定着語</span></div><div class="stat"><b id="reviewDue">0</b><span>復習待ち</span></div>
+    <div class="stat"><b id="mastered">0</b><span>卒業語</span></div><div class="stat"><b id="reviewDue">0</b><span>重点語</span></div>
   </div>
   <div class="progress"><i id="bar"></i></div>
   <section id="home" class="card">
@@ -46,7 +46,7 @@
     <div class="install">Chromeで開いて使えます。学習履歴はこの端末に保存されます。</div>
   </section>
   <section id="quiz" class="card hidden">
-    <div class="small"><span id="qnum">1</span> / 10　<span class="badge" id="modeBadge">4択</span>　<span class="badge" id="catBadge">Core A</span></div>
+    <div class="small"><span id="qnum">1</span> / 10　<span class="badge" id="modeBadge">4択</span>　<span class="badge" id="catBadge">Core A</span>　<span class="badge" id="stateBadge">新規</span></div>
     <div class="word" id="word"></div><div class="small" id="hint"></div><div class="row"><button onclick="speakWord()">🔊 発音</button></div>
     <div id="choices" class="choices"></div>
     <div id="reveal" class="hidden"><div class="meaning" id="meaning"></div><div class="example" id="example"></div><div class="jp" id="exampleJp"></div>
@@ -64,21 +64,71 @@ const WORDS=window.EIKEN_VOCAB;
 
 const KEY="eiken3_webapp_v2";let state=JSON.parse(localStorage.getItem(KEY)||"{}");state.progress=state.progress||{};state.xp=state.xp||0;state.today=state.today||0;state.lastDay=state.lastDay||"";state.streak=state.streak||0;
 const dayKey=()=>new Date().toLocaleDateString("sv-SE");
-function pFor(w){if(!state.progress[w.e])state.progress[w.e]={level:0,next:0,seen:0,correct:0};return state.progress[w.e]}
+function pFor(w){
+  if(!state.progress[w.e])state.progress[w.e]={level:0,next:0,seen:0,correct:0,streak:0,lapses:0,days:[],graduated:false,fastCandidate:false,focusUntil:0,lastSeen:0};
+  const p=state.progress[w.e];
+  if(p.streak==null)p.streak=0;if(p.lapses==null)p.lapses=0;if(!Array.isArray(p.days))p.days=[];if(p.graduated==null)p.graduated=false;if(p.fastCandidate==null)p.fastCandidate=false;if(p.focusUntil==null)p.focusUntil=0;if(p.lastSeen==null)p.lastSeen=0;
+  return p
+}
 function save(){localStorage.setItem(KEY,JSON.stringify(state));refreshStats()}
 function initDay(){const t=dayKey();if(state.lastDay!==t){const d=new Date();d.setDate(d.getDate()-1);state.streak=state.lastDay===d.toLocaleDateString("sv-SE")?state.streak+1:1;state.today=0;state.lastDay=t;save()}}
-function refreshStats(){const ps=WORDS.map(pFor),now=Date.now();document.getElementById("xp").textContent=state.xp;document.getElementById("today").textContent=state.today;document.getElementById("mastered").textContent=ps.filter(p=>p.level>=4).length;document.getElementById("reviewDue").textContent=ps.filter(p=>p.seen>0&&p.next<=now&&p.level<5).length;document.getElementById("streakPill").textContent=`🔥 ${state.streak}日`}
+function refreshStats(){const ps=WORDS.map(pFor),now=Date.now();document.getElementById("xp").textContent=state.xp;document.getElementById("today").textContent=state.today;document.getElementById("mastered").textContent=ps.filter(p=>p.graduated).length;document.getElementById("reviewDue").textContent=ps.filter(p=>!p.graduated&&(p.lapses>0||p.focusUntil>now)).length;document.getElementById("streakPill").textContent=`🔥 ${state.streak}日`}
 initDay();refreshStats();document.getElementById("vocabCount").textContent=WORDS.length;
 let session=[],idx=0,score=0,mode="mix",currentMode="choice",answered=false;
-function priority(w){const p=pFor(w),now=Date.now();let s=Math.random()*10;s+=(w.weight||3)*12;if(p.seen===0)s+=45;if(p.next<=now)s+=40;s+=(5-p.level)*8;if(p.seen>0)s+=(1-(p.correct/p.seen))*30;return s}
-function startSession(m){mode=m;session=[...WORDS].sort((a,b)=>priority(b)-priority(a)).slice(0,10);idx=0;score=0;document.getElementById("home").classList.add("hidden");document.getElementById("finish").classList.add("hidden");document.getElementById("weak").classList.add("hidden");document.getElementById("quiz").classList.remove("hidden");showQuestion()}
-function showQuestion(){answered=false;const w=session[idx];currentMode=mode==="mix"?(idx%3===2?"flash":"choice"):mode;document.getElementById("qnum").textContent=idx+1;document.getElementById("bar").style.width=(idx*10)+"%";document.getElementById("word").textContent=w.e;document.getElementById("meaning").textContent=w.j;document.getElementById("example").textContent=w.ex;document.getElementById("exampleJp").textContent=w.jp;document.getElementById("reveal").classList.add("hidden");const choices=document.getElementById("choices");choices.innerHTML="";choices.classList.remove("hidden");document.getElementById("modeBadge").textContent=currentMode==="choice"?"4択":"自己評価";const labels={CoreA:"Core A",CoreB:"Core B",CoreC:"Core C",Phrase:"熟語",Conversation:"会話",Review:"復習"};document.getElementById("catBadge").textContent=labels[w.category]||w.category;if(currentMode==="choice"){document.getElementById("hint").textContent="意味を選ぼう";const same=WORDS.filter(x=>x.e!==w.e&&x.pos===w.pos).sort(()=>Math.random()-.5);const rest=WORDS.filter(x=>x.e!==w.e&&x.pos!==w.pos).sort(()=>Math.random()-.5);let opts=[w,...same,...rest].filter((x,i,a)=>a.findIndex(y=>y.e===x.e)===i).slice(0,4).sort(()=>Math.random()-.5);opts.forEach(c=>{const b=document.createElement("button");b.textContent=c.j;b.onclick=()=>choose(c.e===w.e,b);choices.appendChild(b)})}else{document.getElementById("hint").textContent="意味が分かったら答えを見る";const b=document.createElement("button");b.className="primary";b.textContent="答えを見る";b.onclick=()=>{choices.classList.add("hidden");document.getElementById("reveal").classList.remove("hidden")};choices.appendChild(b)}}
-function choose(ok,b){if(answered)return;answered=true;const w=session[idx],p=pFor(w);p.seen++;if(ok){b.classList.add("good");score++;state.today++;state.xp+=10;p.correct++;p.level=Math.min(5,p.level+1);const mins=[5,60,1440,4320,10080,30240][p.level];p.next=Date.now()+mins*60000;save();setTimeout(nextQuestion,350)}else{b.classList.add("bad");p.level=Math.max(0,p.level-1);p.next=Date.now()+3*60000;save();document.getElementById("choices").classList.add("hidden");document.getElementById("reveal").classList.remove("hidden")}}
-function rate(r){const p=pFor(session[idx]);p.seen++;if(r===2){score++;state.today++;state.xp+=10;p.correct++;p.level=Math.min(5,p.level+1)}else if(r===1){state.xp+=3;p.level=Math.max(1,p.level)}else p.level=Math.max(0,p.level-1);const mins=[3,10,60,1440,4320,10080];p.next=Date.now()+mins[p.level]*60000;save();nextQuestion()}
+function priority(w){
+  const p=pFor(w),now=Date.now();let s=Math.random()*8+(w.weight||3)*14;
+  if(w.category==="CoreA")s+=22;if(w.category==="Phrase"||w.category==="Conversation")s+=12;
+  if(p.seen===0)s+=55;
+  if(p.next<=now&&p.seen>0)s+=48;
+  if(p.focusUntil>now)s+=70;
+  if(p.lapses>0)s+=Math.min(90,p.lapses*30);
+  if(p.seen>0)s+=(1-(p.correct/Math.max(1,p.seen)))*45;
+  s+=(5-p.level)*9;
+  if(p.fastCandidate&&p.next>now)s-=35;
+  if(p.graduated)s-=140;
+  if(p.graduated&&p.next<=now)s+=70;
+  return s
+}
+function buildSession(){return [...WORDS].sort((a,b)=>priority(b)-priority(a)).slice(0,10)}
+function startSession(m){mode=m;session=buildSession();idx=0;score=0;document.getElementById("home").classList.add("hidden");document.getElementById("finish").classList.add("hidden");document.getElementById("weak").classList.add("hidden");document.getElementById("quiz").classList.remove("hidden");showQuestion()}
+function markDay(p){const d=dayKey();if(!p.days.includes(d))p.days.push(d);if(p.days.length>5)p.days=p.days.slice(-5)}
+function maybeGraduate(w,p){
+  if(p.graduated)return;
+  const fastPass=p.fastCandidate&&p.streak>=2&&p.days.length>=2&&p.lapses===0;
+  const normalPass=p.level>=4&&p.streak>=3&&p.days.length>=2&&p.correct>=3;
+  if(fastPass||normalPass){p.graduated=true;p.focusUntil=0;p.next=Date.now()+21*24*60*60*1000;state.xp+=25}
+}
+function recordResult(w,kind){
+  const p=pFor(w),now=Date.now(),wasNew=p.seen===0;
+  p.seen++;p.lastSeen=now;markDay(p);
+  if(kind==="correct"){
+    p.correct++;p.streak++;p.level=Math.min(5,p.level+1);state.today++;state.xp+=10;
+    if(wasNew&&p.lapses===0&&(w.category==="CoreA"||w.weight>=5))p.fastCandidate=true;
+    const mins=[10,180,1440,4320,10080,30240][p.level];p.next=now+mins*60000;p.focusUntil=0;maybeGraduate(w,p)
+  }else if(kind==="known"){
+    p.correct++;p.streak++;p.level=Math.min(5,p.level+1);state.today++;state.xp+=8;
+    if(wasNew&&p.lapses===0&&(w.category==="CoreA"||w.weight>=5))p.fastCandidate=true;
+    const mins=[10,120,1440,4320,10080,30240][p.level];p.next=now+mins*60000;p.focusUntil=0;maybeGraduate(w,p)
+  }else if(kind==="unsure"){
+    p.streak=0;p.fastCandidate=false;p.level=Math.max(1,p.level);p.next=now+10*60000;p.focusUntil=now+24*60*60*1000;state.xp+=2
+  }else{
+    p.streak=0;p.fastCandidate=false;p.graduated=false;p.lapses++;p.level=Math.max(0,p.level-1);p.next=now+3*60000;p.focusUntil=now+36*60*60*1000
+  }
+  save()
+}
+function requeueFailed(w){
+  if(idx>=7)return;
+  if(session.slice(idx+1).some(x=>x.e===w.e))return;
+  const at=Math.min(session.length-1,idx+3);
+  session.splice(at,0,w);session.pop()
+}
+function showQuestion(){answered=false;const w=session[idx];currentMode=mode==="mix"?(idx%3===2?"flash":"choice"):mode;document.getElementById("qnum").textContent=idx+1;document.getElementById("bar").style.width=(idx*10)+"%";document.getElementById("word").textContent=w.e;document.getElementById("meaning").textContent=w.j;document.getElementById("example").textContent=w.ex;document.getElementById("exampleJp").textContent=w.jp;document.getElementById("reveal").classList.add("hidden");const choices=document.getElementById("choices");choices.innerHTML="";choices.classList.remove("hidden");document.getElementById("modeBadge").textContent=currentMode==="choice"?"4択":"自己評価";const labels={CoreA:"Core A",CoreB:"Core B",CoreC:"Core C",Phrase:"熟語",Conversation:"会話",Review:"復習"};document.getElementById("catBadge").textContent=labels[w.category]||w.category;const p=pFor(w);document.getElementById("stateBadge").textContent=p.graduated?"卒業":p.lapses>0?"重点":p.fastCandidate?"卒業候補":p.seen>0?"復習":"新規";if(currentMode==="choice"){document.getElementById("hint").textContent="意味を選ぼう";const same=WORDS.filter(x=>x.e!==w.e&&x.pos===w.pos).sort(()=>Math.random()-.5);const rest=WORDS.filter(x=>x.e!==w.e&&x.pos!==w.pos).sort(()=>Math.random()-.5);let opts=[w,...same,...rest].filter((x,i,a)=>a.findIndex(y=>y.e===x.e)===i).slice(0,4).sort(()=>Math.random()-.5);opts.forEach(c=>{const b=document.createElement("button");b.textContent=c.j;b.onclick=()=>choose(c.e===w.e,b);choices.appendChild(b)})}else{document.getElementById("hint").textContent="意味が分かったら答えを見る";const b=document.createElement("button");b.className="primary";b.textContent="答えを見る";b.onclick=()=>{choices.classList.add("hidden");document.getElementById("reveal").classList.remove("hidden")};choices.appendChild(b)}}
+function choose(ok,b){if(answered)return;answered=true;const w=session[idx];if(ok){b.classList.add("good");score++;recordResult(w,"correct");setTimeout(nextQuestion,350)}else{b.classList.add("bad");recordResult(w,"wrong");requeueFailed(w);document.getElementById("choices").classList.add("hidden");document.getElementById("reveal").classList.remove("hidden")}}
+function rate(r){const w=session[idx];if(r===2){score++;recordResult(w,"known")}else if(r===1){recordResult(w,"unsure")}else{recordResult(w,"wrong");requeueFailed(w)}nextQuestion()}
 function nextQuestion(){document.getElementById("choices").classList.remove("hidden");idx++;if(idx>=session.length)return finishSession();showQuestion()}
-function finishSession(){document.getElementById("quiz").classList.add("hidden");document.getElementById("finish").classList.remove("hidden");document.getElementById("bar").style.width="100%";document.getElementById("scoreText").textContent=`${score} / 10 正解`;document.getElementById("finishText").textContent=score>=9?"かなり定着。今日はここで終了でOK。":score>=7?"いいペース。間違えた単語は次回早めに出ます。":"苦手語を優先して回します。今日は量を増やさなくてOK。"}
+function finishSession(){document.getElementById("quiz").classList.add("hidden");document.getElementById("finish").classList.remove("hidden");document.getElementById("bar").style.width="100%";document.getElementById("scoreText").textContent=`${score} / 10 正解`;const focus=WORDS.filter(w=>{const p=pFor(w);return !p.graduated&&(p.lapses>0||p.focusUntil>Date.now())}).length;const grad=WORDS.filter(w=>pFor(w).graduated).length;document.getElementById("finishText").textContent=score>=9?`かなり定着。卒業語 ${grad}。今日はここで終了でOK。`:score>=7?`いいペース。重点語 ${focus} は自動で早めに再出題します。`:`重点語 ${focus} を優先中。量を増やすより、短く反復します。`}
 function showHome(){document.getElementById("quiz").classList.add("hidden");document.getElementById("finish").classList.add("hidden");document.getElementById("weak").classList.add("hidden");document.getElementById("home").classList.remove("hidden");document.getElementById("bar").style.width="0";refreshStats()}
-function showWeak(){document.getElementById("home").classList.add("hidden");document.getElementById("weak").classList.remove("hidden");const ranked=[...WORDS].filter(w=>pFor(w).seen>0).sort((a,b)=>{const pa=pFor(a),pb=pFor(b);return(pa.correct/pa.seen)-(pb.correct/pb.seen)||pa.level-pb.level}).slice(0,10);document.getElementById("weakList").innerHTML=ranked.length?ranked.map((w,i)=>{const p=pFor(w);const rt=Math.round((p.correct/p.seen)*100);return `<div style="padding:10px 0;border-bottom:1px solid #334155"><b>${i+1}. ${w.e}</b> — ${w.j}<div class="small" style="text-align:left">${w.category} / 重要度 ${w.weight} / 正答率 ${rt}% / 学習 ${p.seen}回</div></div>`}).join(""):'<div class="small">まだ学習データがありません。</div>'}
+function showWeak(){document.getElementById("home").classList.add("hidden");document.getElementById("weak").classList.remove("hidden");const ranked=[...WORDS].filter(w=>pFor(w).seen>0).sort((a,b)=>{const pa=pFor(a),pb=pFor(b);return(pa.correct/pa.seen)-(pb.correct/pb.seen)||pa.level-pb.level}).slice(0,10);document.getElementById("weakList").innerHTML=ranked.length?ranked.map((w,i)=>{const p=pFor(w);const rt=Math.round((p.correct/p.seen)*100);return `<div style="padding:10px 0;border-bottom:1px solid #334155"><b>${i+1}. ${w.e}</b> — ${w.j}<div class="small" style="text-align:left">${w.category} / 重要度 ${w.weight} / 正答率 ${rt}% / ミス ${p.lapses}回 / 連続正解 ${p.streak}回</div></div>`}).join(""):'<div class="small">まだ学習データがありません。</div>'}
 function speakWord(){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(session[idx].e);u.lang="en-US";u.rate=.85;speechSynthesis.speak(u)}
 if("serviceWorker" in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
