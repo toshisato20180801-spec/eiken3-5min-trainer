@@ -22,7 +22,7 @@
     button.primary{background:linear-gradient(135deg,#0284c7,#4f46e5);border:none}button.good{background:#14532d;border-color:#166534}.warn{background:#78350f!important;border-color:#92400e!important}.bad{background:#7f1d1d!important;border-color:#991b1b!important}
     .row{display:flex;gap:10px;margin-top:14px}.row>*{flex:1}.menu,.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}.menu button{min-height:90px}.choices button{min-height:60px}
     .hidden{display:none!important}.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#172554;color:#bfdbfe;font-size:12px}.result{font-size:26px;font-weight:900;text-align:center}
-    .install{margin-top:12px;background:#0b1220;border:1px dashed var(--line);border-radius:14px;padding:10px;text-align:center;color:var(--muted);font-size:12px}
+    .install{margin-top:12px;background:#0b1220;border:1px dashed var(--line);border-radius:14px;padding:10px;text-align:center;color:var(--muted);font-size:12px}.spellbox{margin-top:18px}.spellbox input{width:100%;font-size:22px;padding:15px 16px;border-radius:14px;border:1px solid var(--line);background:#0b1220;color:var(--text);outline:none;text-align:center}.spellbox input:focus{border-color:var(--accent)}.spellmsg{text-align:center;margin-top:10px;font-weight:700;min-height:24px}
     @media(max-width:540px){.stats{grid-template-columns:repeat(2,1fr)}.choices,.menu{grid-template-columns:1fr}.word{font-size:38px}}
   </style>
 </head>
@@ -36,18 +36,20 @@
   <div class="progress"><i id="bar"></i></div>
   <section id="home" class="card">
     <div class="small">EIKEN Grade 3 Vocabulary Core v1 ・ 合格点への寄与が高い順</div>
-    <div class="word" style="font-size:30px">今日も10問だけ。<br><span style="font-size:14px;color:#94a3b8"><span id="vocabCount"></span>項目から最適化</span></div><div class="meaning">重要語 → 苦手語 → 復習語を自動で優先。</div>
+    <div class="word" style="font-size:30px">今日も10問だけ。<br><span style="font-size:14px;color:#94a3b8"><span id="vocabCount"></span>項目から最適化</span></div><div class="meaning">重要語 → 苦手語 → 復習語を優先。卒業にはスペル正解が必要。</div>
     <div class="menu">
-      <button class="primary" onclick="startSession('mix')">🎯 おすすめ<br><span class="small">4択＋確認</span></button>
+      <button class="primary" onclick="startSession('mix')">🎯 おすすめ<br><span class="small">4択＋スペル＋確認</span></button>
       <button onclick="startSession('choice')">⚡ 4択だけ<br><span class="small">テンポ重視</span></button>
       <button onclick="startSession('flash')">🧠 覚えた？<br><span class="small">自己評価</span></button>
+      <button onclick="startSession('spell')">✍️ スペル<br><span class="small">日本語 → 英語</span></button>
       <button onclick="showWeak()">📉 苦手TOP<br><span class="small">弱点を見る</span></button>
     </div>
     <div class="install">Chromeで開いて使えます。学習履歴はこの端末に保存されます。</div>
   </section>
   <section id="quiz" class="card hidden">
     <div class="small"><span id="qnum">1</span> / 10　<span class="badge" id="modeBadge">4択</span>　<span class="badge" id="catBadge">Core A</span>　<span class="badge" id="stateBadge">新規</span></div>
-    <div class="word" id="word"></div><div class="small" id="hint"></div><div class="row"><button onclick="speakWord()">🔊 発音</button></div>
+    <div class="word" id="word"></div><div class="small" id="hint"></div><div class="row"><button id="speakBtn" onclick="speakWord()">🔊 発音</button></div>
+    <div id="spellArea" class="spellbox hidden"><input id="spellInput" type="text" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="英語を入力"><div id="spellMsg" class="spellmsg"></div><div class="row"><button class="primary" onclick="checkSpelling()">答える</button></div></div>
     <div id="choices" class="choices"></div>
     <div id="reveal" class="hidden"><div class="meaning" id="meaning"></div><div class="example" id="example"></div><div class="jp" id="exampleJp"></div>
       <div class="row"><button class="bad" onclick="rate(0)">まだ無理</button><button class="warn" onclick="rate(1)">あやしい</button><button class="good" onclick="rate(2)">覚えた</button></div>
@@ -67,7 +69,7 @@ const dayKey=()=>new Date().toLocaleDateString("sv-SE");
 function pFor(w){
   if(!state.progress[w.e])state.progress[w.e]={level:0,next:0,seen:0,correct:0,streak:0,lapses:0,days:[],graduated:false,fastCandidate:false,focusUntil:0,lastSeen:0};
   const p=state.progress[w.e];
-  if(p.streak==null)p.streak=0;if(p.lapses==null)p.lapses=0;if(!Array.isArray(p.days))p.days=[];if(p.graduated==null)p.graduated=false;if(p.fastCandidate==null)p.fastCandidate=false;if(p.focusUntil==null)p.focusUntil=0;if(p.lastSeen==null)p.lastSeen=0;
+  if(p.streak==null)p.streak=0;if(p.lapses==null)p.lapses=0;if(!Array.isArray(p.days))p.days=[];if(p.graduated==null)p.graduated=false;if(p.fastCandidate==null)p.fastCandidate=false;if(p.focusUntil==null)p.focusUntil=0;if(p.lastSeen==null)p.lastSeen=0;if(p.writingSeen==null)p.writingSeen=0;if(p.writingCorrect==null)p.writingCorrect=0;
   return p
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(state));refreshStats()}
@@ -94,8 +96,8 @@ function startSession(m){mode=m;session=buildSession();idx=0;score=0;document.ge
 function markDay(p){const d=dayKey();if(!p.days.includes(d))p.days.push(d);if(p.days.length>5)p.days=p.days.slice(-5)}
 function maybeGraduate(w,p){
   if(p.graduated)return;
-  const fastPass=p.fastCandidate&&p.streak>=2&&p.days.length>=2&&p.lapses===0;
-  const normalPass=p.level>=4&&p.streak>=3&&p.days.length>=2&&p.correct>=3;
+  const fastPass=p.fastCandidate&&p.streak>=2&&p.days.length>=2&&p.lapses===0&&p.writingCorrect>=1;
+  const normalPass=p.level>=4&&p.streak>=3&&p.days.length>=2&&p.correct>=3&&p.writingCorrect>=1;
   if(fastPass||normalPass){p.graduated=true;p.focusUntil=0;p.next=Date.now()+21*24*60*60*1000;state.xp+=25}
 }
 function recordResult(w,kind){
@@ -105,6 +107,12 @@ function recordResult(w,kind){
     p.correct++;p.streak++;p.level=Math.min(5,p.level+1);state.today++;state.xp+=10;
     if(wasNew&&p.lapses===0&&(w.category==="CoreA"||w.weight>=5))p.fastCandidate=true;
     const mins=[10,180,1440,4320,10080,30240][p.level];p.next=now+mins*60000;p.focusUntil=0;maybeGraduate(w,p)
+  }else if(kind==="writing"){
+    p.correct++;p.writingSeen++;p.writingCorrect++;p.streak++;p.level=Math.min(5,p.level+1);state.today++;state.xp+=15;
+    if(wasNew&&p.lapses===0&&(w.category==="CoreA"||w.weight>=5))p.fastCandidate=true;
+    const mins=[20,240,1440,4320,10080,30240][p.level];p.next=now+mins*60000;p.focusUntil=0;maybeGraduate(w,p)
+  }else if(kind==="writingWrong"){
+    p.writingSeen++;p.streak=0;p.fastCandidate=false;p.graduated=false;p.lapses++;p.level=Math.max(0,p.level-1);p.next=now+3*60000;p.focusUntil=now+48*60*60*1000
   }else if(kind==="known"){
     p.correct++;p.streak++;p.level=Math.min(5,p.level+1);state.today++;state.xp+=8;
     if(wasNew&&p.lapses===0&&(w.category==="CoreA"||w.weight>=5))p.fastCandidate=true;
@@ -122,13 +130,73 @@ function requeueFailed(w){
   const at=Math.min(session.length-1,idx+3);
   session.splice(at,0,w);session.pop()
 }
-function showQuestion(){answered=false;const w=session[idx];currentMode=mode==="mix"?(idx%3===2?"flash":"choice"):mode;document.getElementById("qnum").textContent=idx+1;document.getElementById("bar").style.width=(idx*10)+"%";document.getElementById("word").textContent=w.e;document.getElementById("meaning").textContent=w.j;document.getElementById("example").textContent=w.ex;document.getElementById("exampleJp").textContent=w.jp;document.getElementById("reveal").classList.add("hidden");const choices=document.getElementById("choices");choices.innerHTML="";choices.classList.remove("hidden");document.getElementById("modeBadge").textContent=currentMode==="choice"?"4択":"自己評価";const labels={CoreA:"Core A",CoreB:"Core B",CoreC:"Core C",Phrase:"熟語",Conversation:"会話",Review:"復習"};document.getElementById("catBadge").textContent=labels[w.category]||w.category;const p=pFor(w);document.getElementById("stateBadge").textContent=p.graduated?"卒業":p.lapses>0?"重点":p.fastCandidate?"卒業候補":p.seen>0?"復習":"新規";if(currentMode==="choice"){document.getElementById("hint").textContent="意味を選ぼう";const same=WORDS.filter(x=>x.e!==w.e&&x.pos===w.pos).sort(()=>Math.random()-.5);const rest=WORDS.filter(x=>x.e!==w.e&&x.pos!==w.pos).sort(()=>Math.random()-.5);let opts=[w,...same,...rest].filter((x,i,a)=>a.findIndex(y=>y.e===x.e)===i).slice(0,4).sort(()=>Math.random()-.5);opts.forEach(c=>{const b=document.createElement("button");b.textContent=c.j;b.onclick=()=>choose(c.e===w.e,b);choices.appendChild(b)})}else{document.getElementById("hint").textContent="意味が分かったら答えを見る";const b=document.createElement("button");b.className="primary";b.textContent="答えを見る";b.onclick=()=>{choices.classList.add("hidden");document.getElementById("reveal").classList.remove("hidden")};choices.appendChild(b)}}
+function showQuestion(){
+  answered=false;
+  const w=session[idx],p=pFor(w);
+  if(mode==="mix"){
+    const needsWriting=p.fastCandidate||p.level>=3||p.graduated;
+    currentMode=needsWriting&&idx%2===0?"spell":(idx%4===3?"flash":"choice");
+  }else currentMode=mode;
+  document.getElementById("qnum").textContent=idx+1;
+  document.getElementById("bar").style.width=(idx*10)+"%";
+  document.getElementById("meaning").textContent=w.j;
+  document.getElementById("example").textContent=w.ex;
+  document.getElementById("exampleJp").textContent=w.jp;
+  document.getElementById("reveal").classList.add("hidden");
+  const choices=document.getElementById("choices"),spellArea=document.getElementById("spellArea"),spellInput=document.getElementById("spellInput"),spellMsg=document.getElementById("spellMsg");
+  choices.innerHTML="";choices.classList.remove("hidden");spellArea.classList.add("hidden");spellMsg.textContent="";spellInput.value="";spellInput.dataset.retry="0";
+  const labels={CoreA:"Core A",CoreB:"Core B",CoreC:"Core C",Phrase:"熟語",Conversation:"会話",Review:"復習"};
+  document.getElementById("catBadge").textContent=labels[w.category]||w.category;
+  document.getElementById("stateBadge").textContent=p.graduated?"卒業":p.lapses>0?"重点":p.fastCandidate?"卒業候補":p.seen>0?"復習":"新規";
+  if(currentMode==="spell"){
+    document.getElementById("modeBadge").textContent="スペル";
+    document.getElementById("word").textContent=w.j;
+    document.getElementById("hint").textContent="英語で入力しよう";
+    choices.classList.add("hidden");spellArea.classList.remove("hidden");
+    setTimeout(()=>spellInput.focus(),80);
+  }else{
+    document.getElementById("word").textContent=w.e;
+    document.getElementById("modeBadge").textContent=currentMode==="choice"?"4択":"自己評価";
+    if(currentMode==="choice"){
+      document.getElementById("hint").textContent="意味を選ぼう";
+      const same=WORDS.filter(x=>x.e!==w.e&&x.pos===w.pos).sort(()=>Math.random()-.5);
+      const rest=WORDS.filter(x=>x.e!==w.e&&x.pos!==w.pos).sort(()=>Math.random()-.5);
+      let opts=[w,...same,...rest].filter((x,i,a)=>a.findIndex(y=>y.e===x.e)===i).slice(0,4).sort(()=>Math.random()-.5);
+      opts.forEach(c=>{const b=document.createElement("button");b.textContent=c.j;b.onclick=()=>choose(c.e===w.e,b);choices.appendChild(b)})
+    }else{
+      document.getElementById("hint").textContent="意味が分かったら答えを見る";
+      const b=document.createElement("button");b.className="primary";b.textContent="答えを見る";
+      b.onclick=()=>{choices.classList.add("hidden");document.getElementById("reveal").classList.remove("hidden")};choices.appendChild(b)
+    }
+  }
+}
+function normSpell(v){return v.toLowerCase().trim().replace(/[’‘]/g,"'").replace(/[.!?]+$/,"").replace(/\s+/g," ")}
+function editDistance(a,b){const m=a.length,n=b.length,d=Array.from({length:m+1},()=>Array(n+1).fill(0));for(let i=0;i<=m;i++)d[i][0]=i;for(let j=0;j<=n;j++)d[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[m][n]}
+function checkSpelling(){
+  if(answered)return;
+  const w=session[idx],inp=document.getElementById("spellInput"),msg=document.getElementById("spellMsg");
+  const got=normSpell(inp.value),target=normSpell(w.e);
+  if(!got){msg.textContent="入力してから答えよう";return}
+  if(got===target){
+    answered=true;score++;msg.textContent="✅ 正解";msg.style.color="#22c55e";recordResult(w,"writing");
+    setTimeout(nextQuestion,550);return
+  }
+  const dist=editDistance(got,target),limit=target.length>=10?2:1;
+  if(inp.dataset.retry==="0"&&dist<=limit){
+    inp.dataset.retry="1";msg.textContent="惜しい！もう一度";msg.style.color="#f59e0b";inp.select();return
+  }
+  answered=true;msg.textContent="❌ "+w.e;msg.style.color="#ef4444";recordResult(w,"writingWrong");requeueFailed(w);
+  document.getElementById("meaning").textContent=w.j;document.getElementById("example").textContent=w.ex;document.getElementById("exampleJp").textContent=w.jp;
+  setTimeout(()=>{document.getElementById("spellArea").classList.add("hidden");document.getElementById("reveal").classList.remove("hidden");document.getElementById("word").textContent=w.e},450)
+}
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&currentMode==="spell"&&!document.getElementById("spellArea").classList.contains("hidden"))checkSpelling()});
+
 function choose(ok,b){if(answered)return;answered=true;const w=session[idx];if(ok){b.classList.add("good");score++;recordResult(w,"correct");setTimeout(nextQuestion,350)}else{b.classList.add("bad");recordResult(w,"wrong");requeueFailed(w);document.getElementById("choices").classList.add("hidden");document.getElementById("reveal").classList.remove("hidden")}}
 function rate(r){const w=session[idx];if(r===2){score++;recordResult(w,"known")}else if(r===1){recordResult(w,"unsure")}else{recordResult(w,"wrong");requeueFailed(w)}nextQuestion()}
-function nextQuestion(){document.getElementById("choices").classList.remove("hidden");idx++;if(idx>=session.length)return finishSession();showQuestion()}
+function nextQuestion(){document.getElementById("choices").classList.remove("hidden");document.getElementById("spellArea").classList.add("hidden");idx++;if(idx>=session.length)return finishSession();showQuestion()}
 function finishSession(){document.getElementById("quiz").classList.add("hidden");document.getElementById("finish").classList.remove("hidden");document.getElementById("bar").style.width="100%";document.getElementById("scoreText").textContent=`${score} / 10 正解`;const focus=WORDS.filter(w=>{const p=pFor(w);return !p.graduated&&(p.lapses>0||p.focusUntil>Date.now())}).length;const grad=WORDS.filter(w=>pFor(w).graduated).length;document.getElementById("finishText").textContent=score>=9?`かなり定着。卒業語 ${grad}。今日はここで終了でOK。`:score>=7?`いいペース。重点語 ${focus} は自動で早めに再出題します。`:`重点語 ${focus} を優先中。量を増やすより、短く反復します。`}
 function showHome(){document.getElementById("quiz").classList.add("hidden");document.getElementById("finish").classList.add("hidden");document.getElementById("weak").classList.add("hidden");document.getElementById("home").classList.remove("hidden");document.getElementById("bar").style.width="0";refreshStats()}
-function showWeak(){document.getElementById("home").classList.add("hidden");document.getElementById("weak").classList.remove("hidden");const ranked=[...WORDS].filter(w=>pFor(w).seen>0).sort((a,b)=>{const pa=pFor(a),pb=pFor(b);return(pa.correct/pa.seen)-(pb.correct/pb.seen)||pa.level-pb.level}).slice(0,10);document.getElementById("weakList").innerHTML=ranked.length?ranked.map((w,i)=>{const p=pFor(w);const rt=Math.round((p.correct/p.seen)*100);return `<div style="padding:10px 0;border-bottom:1px solid #334155"><b>${i+1}. ${w.e}</b> — ${w.j}<div class="small" style="text-align:left">${w.category} / 重要度 ${w.weight} / 正答率 ${rt}% / ミス ${p.lapses}回 / 連続正解 ${p.streak}回</div></div>`}).join(""):'<div class="small">まだ学習データがありません。</div>'}
+function showWeak(){document.getElementById("home").classList.add("hidden");document.getElementById("weak").classList.remove("hidden");const ranked=[...WORDS].filter(w=>pFor(w).seen>0).sort((a,b)=>{const pa=pFor(a),pb=pFor(b);return(pa.correct/pa.seen)-(pb.correct/pb.seen)||pa.level-pb.level}).slice(0,10);document.getElementById("weakList").innerHTML=ranked.length?ranked.map((w,i)=>{const p=pFor(w);const rt=Math.round((p.correct/p.seen)*100);return `<div style="padding:10px 0;border-bottom:1px solid #334155"><b>${i+1}. ${w.e}</b> — ${w.j}<div class="small" style="text-align:left">${w.category} / 重要度 ${w.weight} / 正答率 ${rt}% / ミス ${p.lapses}回 / スペル ${p.writingCorrect}/${p.writingSeen} / 連続正解 ${p.streak}回</div></div>`}).join(""):'<div class="small">まだ学習データがありません。</div>'}
 function speakWord(){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(session[idx].e);u.lang="en-US";u.rate=.85;speechSynthesis.speak(u)}
 if("serviceWorker" in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
