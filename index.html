@@ -28,14 +28,14 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><h1>英検3級 5分トレーナー <span style="font-size:11px;color:#94a3b8">v1.3.0</span></h1><div class="pill" id="streakPill">🔥 0日</div></div>
+  <div class="top"><h1>英検3級 5分トレーナー <span style="font-size:11px;color:#94a3b8">v1.4.0</span></h1><div class="pill" id="streakPill">🔥 0日</div></div>
   <div class="stats">
     <div class="stat"><b id="xp">0</b><span>XP</span></div><div class="stat"><b id="today">0</b><span>今日の正解</span></div>
     <div class="stat"><b id="mastered">0</b><span>卒業語</span></div><div class="stat"><b id="reviewDue">0</b><span>重点語</span></div>
   </div>
   <div class="progress"><i id="bar"></i></div>
   <section id="home" class="card">
-    <div class="small">EIKEN Grade 3 Vocabulary Core v1 ・ Writing v1.3.0</div>
+    <div class="small">EIKEN Grade 3 Vocabulary Core v1 ・ Writing v1.4.0</div>
     <div class="word" style="font-size:30px">今日も10問だけ。<br><span style="font-size:14px;color:#94a3b8"><span id="vocabCount"></span>項目から最適化</span></div><div class="meaning">出題は4択とスペル入力の2形式だけ。おすすめは4択7問＋スペル3問。</div>
     <div class="menu">
       <button class="primary" onclick="startSession('mix')">🎯 おすすめ<br><span class="small">4択7問＋スペル3問</span></button>
@@ -58,7 +58,8 @@
   </section>
   <section id="weak" class="card hidden"><div class="result">📉 苦手TOP10</div><div id="weakList" style="margin-top:14px"></div><div class="row"><button class="primary" onclick="showHome()">戻る</button></div></section>
 </div>
-<script src="vocab-v1.js?v=130"></script>
+<script src="vocab-v1.js?v=140"></script>
+<script src="phrases-v1.js?v=140"></script>
 <script>
 const WORDS=window.EIKEN_VOCAB;
 
